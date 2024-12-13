@@ -1,0 +1,14 @@
+type Query {
+    siparisler: [Siparis]
+}
+
+type Mutation {
+    addSiparis(kitapId: ID!, miktar: Int!, kullaniciId: ID!): Siparis
+}
+
+type Siparis {
+    id: ID!
+    kitapId: ID!
+    miktar: Int!
+    kullaniciId: ID!
+}

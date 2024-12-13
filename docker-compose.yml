@@ -1,0 +1,99 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: kitapdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./create-databases.sql:/docker-entrypoint-initdb.d/create-databases.sql # SQL scriptini kopyalama
+    networks:
+      - app_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+
+  kitap-mikroservisi:
+    build:
+      context: ./kitap-mikroservisi/kitap-mikroservisi
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kitapdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+
+  siparis-mikroservisi:
+    build:
+      context: ./siparis-mikroservisi/siparis-mikroservisi
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kitapdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin123
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+    depends_on:
+      - postgres
+    networks:
+      - app_network
+
+  gateway:
+    build:
+      context: ./gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: kitap-mikroservisi
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://kitap-mikroservisi:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/kitaplar/**
+      SPRING_CLOUD_GATEWAY_ROUTES_1_ID: siparis-mikroservisi
+      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://siparis-mikroservisi:8082
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/siparisler/**
+    depends_on:
+      - kitap-mikroservisi
+      - siparis-mikroservisi
+    networks:
+      - app_network
+
+ # graphql:
+#   image: docker.io/kaaror/spring-graphql
+#   container_name: graphql
+#   environment:
+#     - SPRING_PROFILES_ACTIVE=graphql
+#   ports:
+#     - "8083:8080"
+#   depends_on:
+#     - kitap-mikroservisi
+#     - siparis-mikroservisi
+#   networks:
+#     - app_network
+
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  postgres_data: 

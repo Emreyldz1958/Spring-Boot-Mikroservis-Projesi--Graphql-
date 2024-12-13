@@ -1,0 +1,15 @@
+type Query {
+    kitaplar: [Kitap]
+}
+
+type Mutation {
+    addKitap(isim: String!, yazar: String!, tur: String, fiyat: Float!): Kitap
+}
+
+type Kitap {
+    id: ID!
+    isim: String!
+    yazar: String!
+    tur: String
+    fiyat: Float!
+}
